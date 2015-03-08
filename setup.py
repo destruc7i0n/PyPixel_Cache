@@ -1,0 +1,4 @@
+rom distutils.core import setup
+setup(name="PyPixel_Cache",
+	version = "1.1",
+	py_modules=['pypixel_cache'])
