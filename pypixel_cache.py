@@ -11,7 +11,7 @@ Updated by TheDestruc7i0n to be able to Cache files
 #Old imports
 
 import json
-#import urllib2
+import urllib2
 import time
 
 #Thanks http://stackoverflow.com/users/100297/martijn-pieters !
@@ -37,7 +37,8 @@ log = logging.getLogger(__name__)
 
 
 class FallbackCachedSession(CachedSession):
-	"""Cached session that'll reuse expired cache data on timeouts
+	"""
+	Cached session that'll reuse expired cache data on timeouts
 
 	This allows survival in case the backend is down, living of stale
 	data until it comes back.
@@ -109,15 +110,12 @@ from requests_cache.backends.base import BaseCache
 BaseCache.delete = basecache_delete
 
 requests_cache.install_cache(
-	'HypixelAPI', backend='sqlite', expire_after=999999999999,
+	'HypixelAPI', backend='sqlite', expire_after=600,
 	session_factory=FallbackCachedSession)
 
 #Begin old code, with changes
 
 def expandUrlData(data):
-	"""
-	dict -> a param string to add to a url
-	"""
 	string = "?" # the base for any url
 	dataStrings = []
 	for i in data:
@@ -126,127 +124,103 @@ def expandUrlData(data):
 	return string
 
 
-def urlopen(url, t, params={}):
-	"""
-	string, dict -> data from the url
-	"""
+def urlopen(url, t, ua, params={}):
 	url += expandUrlData(params)
-	res = requests.get(url, headers = { 'User-Agent': 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36' }, timeout = t).text
-	html = json.loads(res)
+	res = requests.get(url, headers = { 'User-Agent': ua }, timeout = t)
+	html = res.json()
 	#html = urllib2.urlopen(req).read()
 	html["Cached"] = res.from_cache
+	#html["Timestamp"] = int(time.time()*1000)
 	return html
 
+def noncache_urlopen(url, t, ua, params={}):
+	url += expandUrlData(params)
+	req = urllib2.Request(url, headers = { 'User-Agent': ua })
+	html = urllib2.urlopen(req, timeout = t).read()
+	return json.loads(html)
+
 class HypixelAPI:
-	"""
-	A class that allows you to make hypixel api calls.
-	string -> api class
-		"""
 	base = "https://api.hypixel.net/"
-	def __init__(self, key, timeout = 3):
+	def __init__(self, key, timeout = 3, ua = 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36'):
 		self.key = key
 		self.timeout = timeout
+		self.ua = ua
 		self.baseParams = {"key": self.key}
 
 	def keyRequest(self):
-		"""
-		nothing -> dict of stats for your api key
-		"""
 		url = self.base + "key"
 		params = self.baseParams
 		timeout = self.timeout
-		return urlopen(url, timeout, params)
+		ua = self.ua
+		return noncache_urlopen(url, timeout, ua, params)
 		
 	def boosters(self):
-		"""
-		nothing -> gets list of boosters
-		"""
 		url = self.base + "boosters"
 		params = self.baseParams
 		timeout = self.timeout
-		return urlopen(url, timeout, params)
+		ua = self.ua
+		return urlopen(url, timeout, ua, params)
 
 	def friends(self, username):
-		"""
-		string -> dict of friends of the player USERNAME
-		"""
 		url = self.base + "friends"
 		params = self.baseParams
 		timeout = self.timeout
+		ua = self.ua
 		params["player"] = username
-		return urlopen(url, timeout, params)
+		return urlopen(url, timeout, ua, params)
 
 	def guildByMember(self, username):
-		"""
-		string -> dict of a hypixel guild containing player USERNAME
-		"""
 		url = self.base + "findGuild"
 		params = self.baseParams
 		timeout = self.timeout
+		ua = self.ua
 		params["byPlayer"] = username
-		return urlopen(url, timeout, params)
+		return urlopen(url, timeout, ua, params)
 
 	def guildByName(self, name):
-		"""
-		string -> dict of a hypixel guild named NAME
-		"""
 		url = self.base + "findGuild"
 		params = self.baseParams
 		timeout = self.timeout
+		ua = self.ua
 		params["byName"] = name
-		return urlopen(url, timeout, params)
+		return urlopen(url, timeout, ua, params)
 
 	def guildByID(self, guildID):
-		"""
-		string -> dict of a hypixel guild with id GUILDID
-		"""
 		url = self.base + "guild"
 		params = self.baseParams
 		timeout = self.timeout
+		ua = self.ua
 		params["id"] = guildID
-		return urlopen(url, timeout, params)
+		return urlopen(url, timeout, ua, params)
 
 	def session(self, username):
-		"""
-		string -> dict of USERNAME's session
-		"""
 		url = self.base + "session"
 		params = self.baseParams
 		timeout = self.timeout
+		ua = self.ua
 		params["player"] = username
-		return urlopen(url, timeout, params)
+		return noncache_urlopen(url, timeout, ua, params)
 
 	def userByUUID(self, uuid):
-		"""
-		string -> information about player with uuid UUID
-		"""
 		url = self.base + "player"
 		params = self.baseParams
 		timeout = self.timeout
+		ua = self.ua
 		params["uuid"] = uuid
-		return urlopen(url, timeout, params)
+		return urlopen(url, timeout, ua, params)
 		
 	def userByName(self, name):
-		"""
-		string -> information about player with name NAME
-		"""
 		url = self.base + "player"
 		params = self.baseParams
 		timeout = self.timeout
+		ua = self.ua
 		params["name"] = name
-		return urlopen(url, timeout, params)
+		return urlopen(url, timeout, ua, params)
 
 
 class MultiKeyAPI:
-	"""
-	A class that handles using multiple keys for more requests-per-minute. 
-	Acts exactly like HypixelAPI for making API calls.
-	list -> api class
-	list, int -> api class with delay of int seconds
-	list, int, bool -> api with delay of int seconds with debug mode in bool
-	"""
-	def __init__(self, keys, delay = 5, debug = False, timeout = 3):
-		self.apis = [HypixelAPI(i, timeout = timeout) for i in keys]
+	def __init__(self, keys, delay = 5, debug = False, timeout = 3, ua = 'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36'):
+		self.apis = [HypixelAPI(i, timeout = timeout, ua = ua) for i in keys]
 		self.apii = 0
 		self.api = self.apis[self.apii]
 		self.delay = delay
