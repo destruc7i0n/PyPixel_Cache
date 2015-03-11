@@ -20,6 +20,7 @@ import requests_cache, requests
 
 import logging
 
+
 from datetime import (
 	datetime,
 	timedelta
@@ -34,7 +35,7 @@ from requests_cache.core import (
 )
 
 log = logging.getLogger(__name__)
-
+log.addHandler(logging.NullHandler())
 
 class FallbackCachedSession(CachedSession):
 	"""
@@ -129,7 +130,10 @@ def urlopen(url, t, ua, params={}):
 	res = requests.get(url, headers = { 'User-Agent': ua }, timeout = t)
 	html = res.json()
 	#html = urllib2.urlopen(req).read()
-	html["Cached"] = res.from_cache
+	try:
+		html["Cached"] = res.from_cache
+	except AttributeError:
+		html["Cached"] = True
 	#html["Timestamp"] = int(time.time()*1000)
 	return html
 
