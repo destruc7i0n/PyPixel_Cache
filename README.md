@@ -14,3 +14,7 @@ pip install --upgrade requests-cache
 ```
 
 Where you place pypixel_cache.py will be where the Database will be stored.
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/destruc7i0n/pypixel_cache/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
